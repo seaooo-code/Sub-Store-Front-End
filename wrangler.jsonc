@@ -1,0 +1,13 @@
+{
+  "name": "sub-store-fe",
+  "compatibility_date": "2025-07-15",
+  "routes": [
+    {
+      "pattern": "sub-store.seaooo.com",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./dist"
+  }
+}
