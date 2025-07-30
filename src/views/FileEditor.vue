@@ -770,7 +770,7 @@ const proxyTips = () => {
   Dialog({
     title: "通过代理/节点/策略获取远程文件",
     content:
-      '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以使节点名称、策略组名称，也可以说是一个Loon格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(模块 request 的 proxy 参数):\n\n例: http://127.0.0.1:8888\n\n※ 优先级由高到低: 文件配置, 默认配置',
+      '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以使节点名称、策略组名称，也可以说是一个Loon格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(http/https/socks5):\n\n例: socks5://a:b@127.0.0.1:7890\n\n※ 优先级由高到低: 文件配置, 默认配置\n\n完整说明 请查看 https://t.me/zhetengsha/1843',
     popClass: "auto-dialog",
     textAlign: "left",
     okText: "OK",
@@ -934,11 +934,13 @@ const handleEditGlobalClick = () => {
   display: flex;
   justify-content: space-between;
   bottom: 0;
+  left: 0;
   width: 100%;
   padding: 8px var(--safe-area-side) calc(v-bind("padding") + 8px) var(--safe-area-side);
   z-index: 20;
   background: var(--background-color);
   border-top: 1px solid var(--divider-color);
+  @include centered-fixed-container;
 
   .btn {
     border-radius: 8px;
@@ -947,19 +949,18 @@ const handleEditGlobalClick = () => {
     display: flex;
     justify-content: center;
     align-items: center;
-
     svg {
       margin-right: 4px;
     }
   }
 
-  // .compare-btn {
-  //   background: transparent;
-  //   width: 36%;
-  // }
+  .compare-btn {
+    background: transparent;
+    width: 36%;
+  }
 
   .submit-btn {
-    width: 67%;
+    width: 62%;
   }
 }
 

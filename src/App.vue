@@ -408,6 +408,7 @@ function checkNeedConfiguration() {
     "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "ST Heiti",
     SimHei, sans-serif;
   display: flex;
+  align-items: center;
   flex-direction: column;
   position: absolute;
   min-height: 100%;
@@ -421,6 +422,8 @@ function checkNeedConfiguration() {
     display: flex;
     flex-direction: column;
     overflow: auto;
+    width: 100%;
+    @include responsive-container-width;
   }
 
   overflow-y: auto;

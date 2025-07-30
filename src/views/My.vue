@@ -51,7 +51,8 @@
         </div>
         <div v-if="storageType === 'manual'" class="actions">
           <!-- <input type="file" @change="uploadFile" /> -->
-          <input type="file" ref="fileInput" accept="application/json,text/json,.json" @change="fileChange" style="display: none">
+          <!-- accept="application/json,text/json,.json"  -->
+          <input type="file" ref="fileInput" @change="fileChange" style="display: none">
           <nut-button
             class="upload-btn"
             plain
@@ -88,7 +89,7 @@
             :disabled="syncIsDisabled"
             size="small"
             :loading="uploadIsLoading"
-            @click="sync('upload')"
+            @click="uploadBtn"
           >
             <font-awesome-icon
               icon="fa-solid fa-cloud-arrow-up"
@@ -102,7 +103,7 @@
             size="small"
             :disabled="syncIsDisabled"
             :loading="downloadIsLoading"
-            @click="sync('download')"
+            @click="downloadBtn"
           >
             <font-awesome-icon
               v-if="!downloadIsLoading"
@@ -171,6 +172,18 @@
             type="text"
             input-align="left"
             :left-icon="iconKey"
+          />
+          <nut-input
+            v-if="storageType !== 'manual'"
+            class="input"
+            v-model="githubProxyInput"
+            :disabled="!isEditing"
+            :placeholder="$t(`myPage.placeholder.githubProxy`)"
+            type="text"
+            input-align="left"
+            :left-icon="icongithubProxy"
+            right-icon="tips"
+            @click-right-icon="githubProxyTips"
           />
           <nut-input
             class="input"
@@ -274,6 +287,7 @@ import avatar from "@/assets/icons/avatar.svg?url";
 import iconKey from "@/assets/icons/key-solid.png";
 import iconUser from "@/assets/icons/user-solid.png";
 import iconProxy from "@/assets/icons/proxy.svg";
+import icongithubProxy from "@/assets/icons/githubProxy.svg";
 import iconUA from "@/assets/icons/user-agent.svg";
 import iconMax from "@/assets/icons/max.svg";
 import iconTimeout from "@/assets/icons/timeout.svg";
@@ -297,7 +311,7 @@ const router = useRouter();
 const { showNotify } = useAppNotifyStore();
 const { currentUrl: host } = useHostAPI();
 const settingsStore = useSettingsStore();
-const { githubUser, gistToken, syncTime, avatarUrl, defaultUserAgent, defaultProxy, defaultTimeout, cacheThreshold, syncPlatform } =
+const { githubUser, gistToken, syncTime, avatarUrl, defaultUserAgent, defaultProxy, defaultTimeout, cacheThreshold, syncPlatform, githubProxy } =
   storeToRefs(settingsStore);
 
 const displayAvatar = computed(() => {
@@ -315,7 +329,7 @@ const onClickAPISetting = () => {
 };
 
 const onClickShareManage = () => {
-  router.push(`/share/manage`);
+  router.push(`/shares`);
 };
 const onClickMore = () => {
   router.push(`/settings/more`);
@@ -329,6 +343,7 @@ const onClickAbout = () => {
 const syncPlatformInput = ref("");
 const userInput = ref("");
 const tokenInput = ref("");
+const githubProxyInput = ref("");
 const uaInput = ref("");
 const proxyInput = ref("");
 const timeoutInput = ref("");
@@ -346,6 +361,7 @@ const toggleEditMode = async () => {
       syncPlatform: syncPlatformInput.value,
       githubUser: userInput.value,
       gistToken: tokenInput.value,
+      githubProxy: githubProxyInput.value,
       defaultUserAgent: uaInput.value,
       defaultProxy: proxyInput.value,
       defaultTimeout: timeoutInput.value,
@@ -356,6 +372,7 @@ const toggleEditMode = async () => {
     syncPlatformInput.value = syncPlatform.value;
     userInput.value = githubUser.value;
     tokenInput.value = gistToken.value;
+    githubProxyInput.value = githubProxy.value;
     uaInput.value = defaultUserAgent.value;
     proxyInput.value = defaultProxy.value;
     timeoutInput.value = defaultTimeout.value;
@@ -399,6 +416,7 @@ const toggleSyncPlatform = () => {
 const setDisplayInfo = () => {
   syncPlatformInput.value = syncPlatform.value || "";
   userInput.value = githubUser.value || "";
+  githubProxyInput.value = githubProxy.value || "";
   tokenInput.value = gistToken.value
     ? `${gistToken.value.slice(0, 6)}************`
     : "";
@@ -473,7 +491,7 @@ const upload = async() => {
   }
 }
 
-const sync = async (query: "download" | "upload") => {
+const sync = async (query: "download" | "upload", options?: { keep?: string[], encode?: 'base64' | 'plaintext' }) => {
   switch (query) {
     case "download":
       downloadIsLoading.value = true;
@@ -483,7 +501,7 @@ const sync = async (query: "download" | "upload") => {
       break;
   }
 
-  const res = await useSettingsApi().syncSettings(query);
+  const res = await useSettingsApi().syncSettings(query, options);
 
   if (res?.data?.status === "success") {
     switch (query) {
@@ -506,10 +524,65 @@ const sync = async (query: "download" | "upload") => {
   downloadIsLoading.value = false;
   uploadIsLoading.value = false;
 };
+
+const uploadBtn = () => {
+  Dialog({
+    title: '请选择',
+    content: '若选择明文, 将不会保留 GitHub Token. 若选择 Base64 编码, 将完整保留数据(后端版本必须 >= 2.19.85)',
+    footerDirection: 'vertical',
+    onCancel: () => {
+      sync('upload', {
+        encode: 'plaintext'
+      });
+    },
+    cancelText: '明文(将不会保留 GitHub Token)',
+    okText: 'Base64 编码上传',
+    onOk: () => {
+      sync('upload', {
+        encode: 'base64'
+      });
+    },
+    popClass: "auto-dialog",
+    closeOnPopstate: true,
+    lockScroll: false,
+  });
+}
+const downloadBtn = () => {
+  Dialog({
+    title: '请选择',
+    content: '若想保留本地当前已设置的 GitHub Token, 请选择保留(后端版本必须 >= 2.19.83)',
+    footerDirection: 'vertical',
+    onCancel: () => {
+      sync('download');
+    },
+    okText: '保留当前 Token, 覆盖其他数据',
+    cancelText: '覆盖(可能需重新设置 Token)',
+    onOk: () => {
+      sync('download', {
+        keep: ['settings.gistToken']
+      });
+    },
+    popClass: "auto-dialog",
+    closeOnPopstate: true,
+    lockScroll: false,
+  });
+}
+const githubProxyTips = () => {
+  Dialog({
+      title: '请填写完整 GitHub 加速代理地址',
+      content: '后端需 >= 2.19.97\n\n1. 仅用于上传/下载 Gist 和获取 GitHub 头像\n\n2. 请填写完整 如 https://a.com\n\n3. 需支持代理 https://api.github.com\n\n测试方式:\n浏览器打开\nhttps://a.com/https://api.github.com/users/xream\n有正常的响应\n\n4. 使用此方式时, 自行注意安全隐私问题',
+      popClass: 'auto-dialog',
+      textAlign: 'left',
+      okText: 'OK',
+      noCancelBtn: true,
+      closeOnPopstate: true,
+      lockScroll: false,
+    });
+};
 const proxyTips = () => {
   Dialog({
       title: '通过代理/节点/策略进行下载',
-      content: '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以使节点名称、策略组名称，也可以说是一个Loon格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(模块 request 的 proxy 参数):\n\n例: http://127.0.0.1:8888\n\n※ 优先级由高到低: 单条订阅, 组合订阅, 默认配置',
+      content: '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以使节点名称、策略组名称，也可以说是一个Loon格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(http/https/socks5):\n\n例: socks5://a:b@127.0.0.1:7890\n\n※ 优先级由高到低: 单条订阅, 组合订阅, 默认配置',
       popClass: 'auto-dialog',
       textAlign: 'left',
       okText: 'OK',
