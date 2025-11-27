@@ -351,13 +351,15 @@ export default {
         ua: {
           label: 'User-Agent',
           placeholder: '下载时使用的 UA，不填使用默认',
+          placeholderDisabled: '透传时禁用自定义 UA',
         },
         subUserinfo: {
           label: '订阅流量信息',
           placeholder: '填写值或链接(使用响应内容)',
         },
         passThroughUA: {
-          label: '透传请求的 User-Agent'
+          label: '透传请求的 User-Agent',
+          warning: '透传请求的 User-Agent 和 自定义 UA 不可同时启用',
         },
         proxy: {
           label: '代理/策略',
@@ -769,6 +771,9 @@ export default {
     noOriginalTips: "跳转失败, 检查源数据是否已删除",
     leftTime: "剩余",
     expired: "已过期",
+    expiredLabel: "过期时间：",
+    createTimeLabel: "创建时间：",
+    magicPathErrorNotify: "SUB_STORE_FRONTEND_BACKEND_PATH 必须以 / 开头，当前分享链接异常，请检查运行环境",
     createShare: {
       expiresValue: {
         label: "有效期时长",
@@ -895,6 +900,11 @@ export default {
     },
   },
   moreSettingPage: {
+    gistUpload: {
+      title: 'Gist 上传',
+      base64: 'Base64 编码',
+      plaintext: '明文(不带 GitHub Token)',
+    },
     subProgress: {
       title: '订阅进度样式',
       hidden: '不显示',

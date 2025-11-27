@@ -333,13 +333,15 @@ export default {
         ua: {
           label: "User-Agent",
           placeholder: "The User-Agent for downloading resource(s)",
+          placeholderDisabled: 'Disable custom UA when passing through',
         },
         subUserinfo: {
           label: "Subscription-Userinfo",
           placeholder: "Value or URL(use response content)",
         },
         passThroughUA: {
-          label: 'Pass Through Request User-Agent'
+          label: 'Pass Through Request User-Agent',
+          warning: 'Pass Through Request User-Agent and Custom UA cannot be enabled at the same time',
         },
         proxy: {
           label: "Proxy/Policy",
@@ -779,6 +781,9 @@ export default {
     noOriginalTips: "Failed to jump, check if the source data has been deleted.",
     leftTime: "Remaining time",
     expired: "Expired",
+    expiredLabel: "Expiration Time: ",
+    createTimeLabel: "Creation Time: ",
+    magicPathErrorNotify: "SUB_STORE_FRONTEND_BACKEND_PATH should start with /, please check the configuration!",
     createShare: {
       expiresValue: {
         label: "Valid for",
@@ -906,6 +911,11 @@ export default {
     },
   },
   moreSettingPage: {
+    gistUpload: {
+      title: 'Gist Upload',
+      base64: 'Base64 Encoded',
+      plaintext: 'Plaintext(w/o GitHub Token)',
+    },
     subProgress: {
       title: "Subscription Progress Style",
       hidden: "Hidden",

@@ -311,7 +311,7 @@ const router = useRouter();
 const { showNotify } = useAppNotifyStore();
 const { currentUrl: host } = useHostAPI();
 const settingsStore = useSettingsStore();
-const { githubUser, gistToken, syncTime, avatarUrl, defaultUserAgent, defaultProxy, defaultTimeout, cacheThreshold, syncPlatform, githubProxy } =
+const { githubUser, gistToken, syncTime, avatarUrl, defaultUserAgent, defaultProxy, defaultTimeout, cacheThreshold, syncPlatform, githubProxy, gistUpload } =
   storeToRefs(settingsStore);
 
 const displayAvatar = computed(() => {
@@ -357,7 +357,7 @@ const fileInput = ref(null);
 const toggleEditMode = async () => {
   isEditLoading.value = true;
   if (isEditing.value) {
-    await settingsStore.editGistSettings({
+    await settingsStore.changeSettings({
       syncPlatform: syncPlatformInput.value,
       githubUser: userInput.value,
       gistToken: tokenInput.value,
@@ -463,7 +463,23 @@ const fileChange = async (event) => {
           type: "success",
           title: t(`myPage.notify.restore.succeed`),
         });
-        window.location.reload()
+
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            await registration.unregister();
+          }
+        }
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          for (let cacheName of cacheNames) {
+            await caches.delete(cacheName);
+          }
+        }
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         throw new Error('restore failed')
       }
@@ -517,7 +533,22 @@ const sync = async (query: "download" | "upload", options?: { keep?: string[], e
       title: t(`myPage.notify.${query}.succeed`),
     });
     if (query === "download") {
-      window.location.reload()
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        for (let cacheName of cacheNames) {
+          await caches.delete(cacheName);
+        }
+      }
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     }
   }
 
@@ -526,26 +557,28 @@ const sync = async (query: "download" | "upload", options?: { keep?: string[], e
 };
 
 const uploadBtn = () => {
-  Dialog({
-    title: '请选择',
-    content: '若选择明文, 将不会保留 GitHub Token. 若选择 Base64 编码, 将完整保留数据(后端版本必须 >= 2.19.85)',
-    footerDirection: 'vertical',
-    onCancel: () => {
-      sync('upload', {
-        encode: 'plaintext'
-      });
-    },
-    cancelText: '明文(将不会保留 GitHub Token)',
-    okText: 'Base64 编码上传',
-    onOk: () => {
-      sync('upload', {
-        encode: 'base64'
-      });
-    },
-    popClass: "auto-dialog",
-    closeOnPopstate: true,
-    lockScroll: false,
-  });
+  const encode = gistUpload.value || 'base64';
+  sync('upload', { encode });
+  // Dialog({
+  //   title: '请选择',
+  //   content: '若选择明文, 将不会保留 GitHub Token. 若选择 Base64 编码, 将完整保留数据(后端版本必须 >= 2.19.85)',
+  //   footerDirection: 'vertical',
+  //   onCancel: () => {
+  //     sync('upload', {
+  //       encode: 'plaintext'
+  //     });
+  //   },
+  //   cancelText: '明文(将不会保留 GitHub Token)',
+  //   okText: 'Base64 编码上传',
+  //   onOk: () => {
+  //     sync('upload', {
+  //       encode: 'base64'
+  //     });
+  //   },
+  //   popClass: "auto-dialog",
+  //   closeOnPopstate: true,
+  //   lockScroll: false,
+  // });
 }
 const downloadBtn = () => {
   Dialog({
@@ -582,7 +615,7 @@ const githubProxyTips = () => {
 const proxyTips = () => {
   Dialog({
       title: '通过代理/节点/策略进行下载',
-      content: '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以使节点名称、策略组名称，也可以说是一个Loon格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(http/https/socks5):\n\n例: socks5://a:b@127.0.0.1:7890\n\n※ 优先级由高到低: 单条订阅, 组合订阅, 默认配置',
+      content: '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以是节点名称、策略组名称，也可以是一个 Loon 格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(http/https/socks5):\n\n例: socks5://a:b@127.0.0.1:7890\n\n※ 优先级由高到低: 单条订阅, 组合订阅, 默认配置',
       popClass: 'auto-dialog',
       textAlign: 'left',
       okText: 'OK',

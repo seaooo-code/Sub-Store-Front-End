@@ -77,6 +77,23 @@
               <nut-switch v-model="form.download" />
             </div>
           </nut-form-item>
+        <!-- tag -->
+        <nut-form-item
+          :label="$t(`editorPage.subConfig.basic.tag.label`)"
+          prop="tag"
+        >
+          <nut-input
+            class="nut-input-text"
+            v-model.trim="form.tag"
+            :border="false"
+            :placeholder="$t(`editorPage.subConfig.basic.tag.placeholder`)"
+            type="text"
+            input-align="right"
+            right-icon="rect-right"
+            @click-right-icon="showTagPopup('tag')"
+          >
+          </nut-input>
+        </nut-form-item>
           <!-- icon -->
           <nut-form-item :label="$t(`editorPage.subConfig.basic.icon.label`)" prop="icon">
             <nut-input
@@ -399,6 +416,13 @@
       <p>{{ t(`editorPage.subConfig.sourceNamePicker.emptyTips`) }}</p>
     </div>
   </nut-picker>
+  <tag-popup
+    v-model:visible="tagPopupVisible"
+    ref="tagPopupRef"
+    :currentTag="currentTag"
+    @setTag="setTagValue"
+    type="file">
+  </tag-popup>
 </template>
 
 <script lang="ts" setup>
@@ -416,6 +440,7 @@ import ActionBlock from "@/views/editor/ActionBlock.vue";
 import { addItem, deleteItem, toggleItem } from "@/utils/actionsOperate";
 import { actionsToProcess } from "@/utils/actionsToPorcess";
 import Script from "@/views/editor/components/Script.vue";
+import TagPopup from "@/components/TagPopup.vue";
 import IconPopup from "@/views/icon/IconPopup.vue";
 import FilePreview from "@/views/FilePreview.vue";
 import { initStores } from "@/utils/initApp";
@@ -467,6 +492,41 @@ const actionsChecked = reactive([]);
 const actionsList = reactive([]);
 const isget = ref(false);
 const fileInput = ref(null);
+const hasUntagged = ref(false);
+const tags = computed(() => {
+  if(!subsStore.files || subsStore.files.length === 0) return []
+  const set = new Set()
+  subsStore.files.forEach(file => {
+    if (Array.isArray(file.tag) && file.tag.length > 0) {
+      file.tag.forEach(i => {
+        set.add(i)
+      });
+    } else {
+      hasUntagged.value = true
+    }
+  })
+
+  let tags: any[] = Array.from(set)
+  if(tags.length === 0) return []
+  tags = tags.map(i => ({ label: i, value: i }));
+  const result = [{ label: t("specificWord.all"), value: "all" }, ...tags]
+  if(hasUntagged.value) result.push({ label: t("specificWord.untagged"), value: "untagged" })
+  return result
+});
+const tag = ref('all');
+const tagPopupVisible = ref(false);
+const tagType = ref('tag');
+const tagPopupRef = ref(null);
+const currentTag = computed(() => {
+  return form.tag
+})
+const showTagPopup = (type:string) => {
+  tagType.value = type || 'tag'
+  tagPopupVisible.value = true
+};
+const setTagValue = (tag: any) => {
+  form.tag = tag;      
+};
 const form = reactive<any>({
   name: "",
   displayName: "",
@@ -548,6 +608,9 @@ watchEffect(() => {
     form.subInfoUrl = sourceData.subInfoUrl;
     form.subInfoUserAgent = sourceData.subInfoUserAgent;
     form.proxy = sourceData.proxy;
+    form.tag = Array.isArray(sourceData.tag)
+    ? sourceData.tag.join(", ")
+    : sourceData.tag;
     form.ua = sourceData.ua;
     form.mergeSources = sourceData.mergeSources;
     form.content = sourceData.content;
@@ -670,6 +733,14 @@ const compare = () => {
     if (data.ignoreFailedRemoteFile === "disabled"){
       data.ignoreFailedRemoteFile = false;
     }
+    data.tag = [
+      ...new Set(
+        (data.tag || "")
+          .split(",")
+          .map((item: string) => item.trim())
+          .filter((item: string) => item.length)
+      ),
+    ];
 
     // 过滤掉预览开关关闭的操作
     actionsChecked.forEach((item) => {
@@ -729,6 +800,14 @@ const submit = () => {
     Toast.loading("...", { id: "submits", cover: true, duration: 1500 });
     // 如果验证成功，开始保存/修改
     const data: any = JSON.parse(JSON.stringify(toRaw(form)));
+    data.tag = [
+      ...new Set(
+        (data.tag || "")
+          .split(",")
+          .map((item: string) => item.trim())
+          .filter((item: string) => item.length)
+      ),
+    ];
     data["display-name"] = data.displayName;
     data.process = actionsToProcess(data.process, actionsList, ignoreList);
     if (data.ignoreFailedRemoteFile === "disabled"){
@@ -770,7 +849,7 @@ const proxyTips = () => {
   Dialog({
     title: "通过代理/节点/策略获取远程文件",
     content:
-      '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以使节点名称、策略组名称，也可以说是一个Loon格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(http/https/socks5):\n\n例: socks5://a:b@127.0.0.1:7890\n\n※ 优先级由高到低: 文件配置, 默认配置\n\n完整说明 请查看 https://t.me/zhetengsha/1843',
+      '1. Surge(参数 policy/policy-descriptor)\n\n可设置节点代理 例: Test = snell, 1.2.3.4, 80, psk=password, version=4\n\n或设置策略/节点 例: 国外加速\n\n2. Loon(参数 node)\n\nLoon 官方文档: \n\n指定该请求使用哪一个节点或者策略组（可以是节点名称、策略组名称，也可以是一个 Loon 格式的节点描述，如：shadowsocksr,example.com,1070,chacha20-ietf,"password",protocol=auth_aes128_sha1,protocol-param=test,obfs=plain,obfs-param=edge.microsoft.com）\n\n3. Stash(参数 headers["X-Surge-Policy"])/Shadowrocket(参数 headers.X-Surge-Policy)/QX(参数 opts.policy)\n\n可设置策略/节点\n\n4. Node.js 版(http/https/socks5):\n\n例: socks5://a:b@127.0.0.1:7890\n\n※ 优先级由高到低: 文件配置, 默认配置\n\n完整说明 请查看 https://t.me/zhetengsha/1843',
     popClass: "auto-dialog",
     textAlign: "left",
     okText: "OK",
